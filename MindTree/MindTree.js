@@ -1,4 +1,4 @@
-import { init as initEcharts } from 'echarts';
+import { init as initEcharts } from "echarts";
 // 节流函数 用于优化拖拽的卡顿
 const throttle = (fn, delay) => {
   let lastTime = 0;
@@ -12,10 +12,16 @@ const throttle = (fn, delay) => {
 };
 
 const createMindTree = (options) => {
-  const { el, data, options: chartOptions = {}, menuOptions = {}, events = {} } = options;
+  const {
+    el,
+    data,
+    options: chartOptions = {},
+    menuOptions = {},
+    events = {},
+  } = options;
 
   const state = {
-    container: typeof el === 'string' ? document.querySelector(el) : el,
+    container: typeof el === "string" ? document.querySelector(el) : el,
     data,
     chartOptions,
     menuOptions,
@@ -37,17 +43,17 @@ const createMindTree = (options) => {
   let menuOffsetY = 0;
   let rafId = null;
   const createContainer = () => {
-    state.container.style.position = 'relative';
-    state.chartContainer = document.createElement('div');
-    state.chartContainer.style.width = '100%';
-    state.chartContainer.style.height = '100%';
+    state.container.style.position = "relative";
+    state.chartContainer = document.createElement("div");
+    state.chartContainer.style.width = "100%";
+    state.chartContainer.style.height = "100%";
     state.container.appendChild(state.chartContainer);
   };
 
   const createContextMenu = () => {
-    const menu = document.createElement('div');
-    menu.className = 'mind-tree-menu';
-    menu.style.display = 'none';
+    const menu = document.createElement("div");
+    menu.className = "mind-tree-menu";
+    menu.style.display = "none";
 
     const menuHtml = state.menuOptions?.items
       ?.map(
@@ -56,9 +62,9 @@ const createMindTree = (options) => {
           <span class="menu-icon ${item.icon}"></span>
           ${item.text}
         </div>
-      `,
+      `
       )
-      .join('');
+      .join("");
 
     menu.innerHTML =
       menuHtml ??
@@ -75,10 +81,10 @@ const createMindTree = (options) => {
   };
 
   const addMenuStyles = () => {
-    if (document.querySelector('#mind-tree-styles')) return;
+    if (document.querySelector("#mind-tree-styles")) return;
 
-    const style = document.createElement('style');
-    style.id = 'mind-tree-styles';
+    const style = document.createElement("style");
+    style.id = "mind-tree-styles";
     style.textContent = `
       .mind-tree-menu {
         position: absolute;
@@ -148,40 +154,40 @@ const createMindTree = (options) => {
 
   const updateChartOption = () => {
     const defaultOptions = {
-      tooltip: { trigger: 'item' },
+      tooltip: { trigger: "item" },
       series: [
         {
-          type: 'tree',
+          type: "tree",
           data: [state.data],
-          layout: 'orthogonal',
-          orient: 'LR',
-          symbol: 'circle',
+          layout: "orthogonal",
+          orient: "LR",
+          symbol: "circle",
           symbolSize: (data) => {
             return data?.children && !data?.collapsed ? 100 : 8;
           },
           itemStyle: {
-            color: '#fff',
-            borderColor: '#91d5ff',
+            color: "#fff",
+            borderColor: "#91d5ff",
             borderWidth: 1,
           },
           label: {
-            position: 'top',
+            position: "top",
             fontSize: 14,
-            color: '#333',
-            backgroundColor: 'transparent',
+            color: "#333",
+            backgroundColor: "transparent",
             padding: [4, 8],
             borderRadius: 4,
           },
           emphasis: {
-            focus: 'descendant',
+            focus: "descendant",
             itemStyle: {
-              color: '#e6f7ff',
-              borderColor: '#1890ff',
+              color: "#e6f7ff",
+              borderColor: "#1890ff",
               borderWidth: 2,
             },
           },
           lineStyle: {
-            color: '#d9d9d9',
+            color: "#d9d9d9",
             width: 1.5,
           },
           expandAndCollapse: true,
@@ -197,18 +203,39 @@ const createMindTree = (options) => {
     state.chart.setOption(defaultOptions);
   };
   const hideContextMenu = () => {
-    state.contextMenu.style.display = 'none';
+    state.contextMenu.style.display = "none";
   };
   const bindEvents = () => {
-    state.container.addEventListener('contextmenu', (e) => e.preventDefault());
+    state.container.addEventListener("contextmenu", (e) => e.preventDefault());
+    // 是否隐藏菜单
+    let shouldHideMenu = true;
 
-    state.chart.on('click', (params) => {
+    state.chart.on("click", (params) => {
       if (params?.data) {
+        // 没有子节点使用单击显示菜单做交互优化
+        if (!params.data?.children?.length) {
+          // 关闭菜单逻辑
+          shouldHideMenu = false;
+          setTimeout(() => {
+            shouldHideMenu = true;
+          }, 0);
+
+          state.currentNode = params.data;
+          showContextMenu(params.event.offsetX, params.event.offsetY);
+          state.events.onContextMenu?.(params.data);
+        }
+
         state.events.onClick?.(params.data);
       }
     });
 
-    state.chart.on('contextmenu', (params) => {
+    document.addEventListener("click", (e) => {
+      if (shouldHideMenu && !state.contextMenu.contains(e.target)) {
+        hideContextMenu();
+      }
+    });
+
+    state.chart.on("contextmenu", (params) => {
       if (params?.data) {
         state.currentNode = params.data;
         showContextMenu(params.event.offsetX, params.event.offsetY);
@@ -216,17 +243,19 @@ const createMindTree = (options) => {
       }
     });
 
-    state.contextMenu.addEventListener('click', (e) => {
-      const menuItem = e.target.closest('.menu-item');
+    state.contextMenu.addEventListener("click", (e) => {
+      const menuItem = e.target.closest(".menu-item");
       if (!menuItem) return;
       // 目前使用默认事件加自定义事件，自定义事件优先级高，后续考虑是否有改进方法
-      const onClick = state.menuOptions?.items?.find((item) => item.key === menuItem.dataset.key)
-        ?.handle?.onClick;
+      const onClick = state.menuOptions?.items?.find(
+        (item) => item.key === menuItem.dataset.key
+      )?.handle?.onClick;
       if (onClick) {
         handleMenuAction(onClick);
       } else {
         const key = menuItem.dataset.key;
-        const defaultHandle = state.events[`on${key.charAt(0).toUpperCase() + key.slice(1)}`];
+        const defaultHandle =
+          state.events[`on${key.charAt(0).toUpperCase() + key.slice(1)}`];
         if (defaultHandle) {
           handleMenuAction(defaultHandle);
         }
@@ -236,21 +265,19 @@ const createMindTree = (options) => {
       e.stopPropagation();
     });
 
-    document.addEventListener('click', hideContextMenu);
-
-    window.addEventListener('resize', () => state.chart.resize());
+    window.addEventListener("resize", () => state.chart.resize());
 
     // 拖拽逻辑
-    state.chart.on('mousedown', (params) => {
+    state.chart.on("mousedown", (params) => {
       if (!params.data) {
         state.isDragging = true;
         state.dragStartX = params.event.offsetX;
         state.dragStartY = params.event.offsetY;
-        state.chartContainer.style.cursor = 'grab';
+        state.chartContainer.style.cursor = "grab";
       }
     });
 
-    state.chart.on('mousemove', (params) => {
+    state.chart.on("mousemove", (params) => {
       if (state.isDragging) {
         const deltaX = params.event.offsetX - state.dragStartX;
         const deltaY = params.event.offsetY - state.dragStartY;
@@ -258,19 +285,22 @@ const createMindTree = (options) => {
         state.chart.setOption({
           series: [
             {
-              type: 'tree',
+              type: "tree",
               zoom: 1,
-              center: [state.chartOffset.x + deltaX, state.chartOffset.y + deltaY],
+              center: [
+                state.chartOffset.x + deltaX,
+                state.chartOffset.y + deltaY,
+              ],
             },
           ],
         });
       }
     });
 
-    state.chart.on('mouseup', () => {
+    state.chart.on("mouseup", () => {
       if (state.isDragging) {
         state.isDragging = false;
-        state.chartContainer.style.cursor = 'default';
+        state.chartContainer.style.cursor = "default";
 
         const option = state.chart.getOption();
         state.chartOffset.x = option.series[0].center[0];
@@ -278,16 +308,16 @@ const createMindTree = (options) => {
       }
     });
 
-    state.chart.on('globalout', () => {
+    state.chart.on("globalout", () => {
       if (state.isDragging) {
         state.isDragging = false;
-        state.chartContainer.style.cursor = 'default';
+        state.chartContainer.style.cursor = "default";
       }
     });
 
     // 滚轮缩放逻辑
     state.container.addEventListener(
-      'wheel',
+      "wheel",
       (e) => {
         e.preventDefault();
         const delta = e.deltaY;
@@ -300,26 +330,26 @@ const createMindTree = (options) => {
         state.chart.setOption({
           series: [
             {
-              type: 'tree',
+              type: "tree",
               zoom: zoom,
             },
           ],
         });
       },
-      { passive: false },
+      { passive: false }
     );
 
     // hover逻辑
-    state.chart.on('mouseover', (params) => {
+    state.chart.on("mouseover", (params) => {
       if (params?.data) {
-        state.chartContainer.style.cursor = 'pointer';
+        state.chartContainer.style.cursor = "pointer";
         state.events.onHover?.(params.data);
       }
     });
 
-    state.chart.on('mouseout', (params) => {
+    state.chart.on("mouseout", (params) => {
       if (params?.data) {
-        state.chartContainer.style.cursor = 'default';
+        state.chartContainer.style.cursor = "default";
         state.events.onHoverEnd?.(params.data);
       }
     });
@@ -337,8 +367,8 @@ const createMindTree = (options) => {
     };
 
     // 菜单拖拽开始
-    state.contextMenu.addEventListener('mousedown', (e) => {
-      if (e.target.closest('.menu-item')) return;
+    state.contextMenu.addEventListener("mousedown", (e) => {
+      if (e.target.closest(".menu-item")) return;
 
       menuDragging = true;
       menuStartX = e.clientX;
@@ -348,9 +378,8 @@ const createMindTree = (options) => {
       menuOffsetX = e.clientX - rect.left;
       menuOffsetY = e.clientY - rect.top;
 
-      state.contextMenu.classList.add('dragging');
-      // 禁用全局点击事件，避免在拖拽时触发隐藏菜单
-      document.removeEventListener('click', hideContextMenu);
+      state.contextMenu.classList.add("dragging");
+      shouldHideMenu = false;
     });
     // 菜单拖拽中
     const handleMenuMove = throttle((e) => {
@@ -364,7 +393,10 @@ const createMindTree = (options) => {
 
       // 边界检查
       newX = Math.max(0, Math.min(newX, containerRect.width - menuRect.width));
-      newY = Math.max(0, Math.min(newY, containerRect.height - menuRect.height));
+      newY = Math.max(
+        0,
+        Math.min(newY, containerRect.height - menuRect.height)
+      );
 
       updateMenuPosition(newX, newY);
 
@@ -372,21 +404,20 @@ const createMindTree = (options) => {
       e.stopPropagation();
     }, 16.667);
 
-    document.addEventListener('mousemove', handleMenuMove);
+    document.addEventListener("mousemove", handleMenuMove);
 
-    document.addEventListener('mouseup', () => {
+    document.addEventListener("mouseup", () => {
       if (menuDragging) {
         menuDragging = false;
-        state.contextMenu.classList.remove('dragging');
+        state.contextMenu.classList.remove("dragging");
 
         if (rafId) {
           cancelAnimationFrame(rafId);
           rafId = null;
         }
-        // 恢复全局点击事件
-        // 不推入延时队列会直接触发导致菜单隐藏
+        // 关闭菜单逻辑
         setTimeout(() => {
-          document.addEventListener('click', hideContextMenu);
+          shouldHideMenu = true;
         }, 0);
       }
     });
@@ -420,9 +451,9 @@ const createMindTree = (options) => {
         <span class="menu-icon ${item.icon}"></span>
         ${item.text}
       </div>
-    `,
+    `
       )
-      .join('');
+      .join("");
 
     return (
       filteredItems ||
@@ -437,9 +468,9 @@ const createMindTree = (options) => {
 
   const showContextMenu = (x, y) => {
     state.contextMenu.innerHTML = renderDynamicMenu(state.currentNode);
-    state.contextMenu.style.display = 'block';
-    state.contextMenu.style.left = x + 'px';
-    state.contextMenu.style.top = y + 'px';
+    state.contextMenu.style.display = "block";
+    state.contextMenu.style.left = x + "px";
+    state.contextMenu.style.top = y + "px";
   };
 
   const handleMenuAction = (handle) => {
@@ -471,14 +502,14 @@ const createMindTree = (options) => {
       // 清理 echarts 事件
       if (state.chart) {
         // 清理所有 echarts 事件监听
-        state.chart.off('click');
-        state.chart.off('contextmenu');
-        state.chart.off('mousedown');
-        state.chart.off('mousemove');
-        state.chart.off('mouseup');
-        state.chart.off('globalout');
-        state.chart.off('mouseover');
-        state.chart.off('mouseout');
+        state.chart.off("click");
+        state.chart.off("contextmenu");
+        state.chart.off("mousedown");
+        state.chart.off("mousemove");
+        state.chart.off("mouseup");
+        state.chart.off("globalout");
+        state.chart.off("mouseover");
+        state.chart.off("mouseout");
 
         // 销毁 echarts 实例
         state.chart.dispose();
@@ -488,20 +519,22 @@ const createMindTree = (options) => {
       // 清理 DOM 事件
       if (state.container) {
         // 移除右键菜单事件
-        state.container.removeEventListener('contextmenu', (e) => e.preventDefault());
+        state.container.removeEventListener("contextmenu", (e) =>
+          e.preventDefault()
+        );
         // 移除滚轮事件
-        state.container.removeEventListener('wheel', null, { passive: false });
+        state.container.removeEventListener("wheel", null, { passive: false });
       }
 
       // 清理右键菜单事件
       if (state.contextMenu) {
-        state.contextMenu.removeEventListener('click', null);
+        state.contextMenu.removeEventListener("click", null);
         state.container.removeChild(state.contextMenu);
       }
 
       // 清理全局事件
-      document.removeEventListener('click', hideContextMenu);
-      window.removeEventListener('resize', () => state.chart?.resize());
+      document.removeEventListener("click", hideContextMenu);
+      window.removeEventListener("resize", () => state.chart?.resize());
 
       // 清理 DOM 元素
       if (state.chartContainer && state.container) {
@@ -515,13 +548,13 @@ const createMindTree = (options) => {
 
       // 清理菜单拖拽相关事件
       if (state.contextMenu) {
-        state.contextMenu.removeEventListener('mousedown', null);
-        document.removeEventListener('mousemove', null);
-        document.removeEventListener('mouseup', null);
+        state.contextMenu.removeEventListener("mousedown", null);
+        document.removeEventListener("mousemove", null);
+        document.removeEventListener("mouseup", null);
       }
 
       if (state.menuMoveHandler) {
-        document.removeEventListener('mousemove', state.menuMoveHandler);
+        document.removeEventListener("mousemove", state.menuMoveHandler);
       }
 
       // 清理最后的 requestAnimationFrame
